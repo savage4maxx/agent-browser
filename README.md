@@ -31,13 +31,19 @@ veb click <sel>             # Click element
 veb type <sel> <text>       # Type into element
 veb fill <sel> <text>       # Clear and fill
 veb press <key>             # Press key (Enter, Tab, Control+a)
+veb keydown <key>           # Hold key down
+veb keyup <key>             # Release key
+veb insert <text>           # Insert text (no key events)
 veb hover <sel>             # Hover element
 veb select <sel> <val>      # Select dropdown option
+veb multiselect <sel> <v1> <v2>  # Multi-select
 veb check <sel>             # Check checkbox
 veb uncheck <sel>           # Uncheck checkbox
 veb scroll <dir> [px]       # Scroll (up/down/left/right)
+veb scrollinto <sel>        # Scroll element into view
 veb drag <src> <tgt>        # Drag and drop
 veb upload <sel> <files>    # Upload files
+veb download [path]         # Wait for download
 veb screenshot [path]       # Take screenshot (--full for full page)
 veb pdf <path>              # Save as PDF
 veb snapshot                # Accessibility tree (best for AI)
@@ -100,6 +106,7 @@ veb wait <ms>               # Wait for time
 veb wait --text "Welcome"   # Wait for text
 veb wait --url "**/dash"    # Wait for URL pattern
 veb wait --load networkidle # Wait for load state
+veb wait --fn "window.ready === true"  # Wait for JS condition
 ```
 
 **Load states:** `load`, `domcontentloaded`, `networkidle`
@@ -149,6 +156,7 @@ veb network route <url> --body <json>  # Mock response
 veb network unroute [url]            # Remove routes
 veb network requests                 # View tracked requests
 veb network requests --filter api    # Filter requests
+veb response <url>                   # Get response body (waits for matching request)
 ```
 
 ### Tabs & Windows
@@ -186,6 +194,7 @@ veb errors                  # View page errors
 veb highlight <sel>         # Highlight element
 veb state save <path>       # Save auth state
 veb state load <path>       # Load auth state
+veb initscript <js>         # Run JS on every page load
 ```
 
 ### Navigation

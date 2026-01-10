@@ -386,6 +386,63 @@ export interface BringToFrontCommand extends BaseCommand {
   action: 'bringtofront';
 }
 
+// Wait for JS function to return truthy
+export interface WaitForFunctionCommand extends BaseCommand {
+  action: 'waitforfunction';
+  expression: string;
+  timeout?: number;
+}
+
+// Scroll element into view
+export interface ScrollIntoViewCommand extends BaseCommand {
+  action: 'scrollintoview';
+  selector: string;
+}
+
+// Add init script (runs on every navigation)
+export interface AddInitScriptCommand extends BaseCommand {
+  action: 'addinitscript';
+  script: string;
+}
+
+// Keyboard down/up (hold keys)
+export interface KeyDownCommand extends BaseCommand {
+  action: 'keydown';
+  key: string;
+}
+
+export interface KeyUpCommand extends BaseCommand {
+  action: 'keyup';
+  key: string;
+}
+
+// Insert text (without key events)
+export interface InsertTextCommand extends BaseCommand {
+  action: 'inserttext';
+  text: string;
+}
+
+// Multi-select dropdown
+export interface MultiSelectCommand extends BaseCommand {
+  action: 'multiselect';
+  selector: string;
+  values: string[];
+}
+
+// Wait for download
+export interface WaitForDownloadCommand extends BaseCommand {
+  action: 'waitfordownload';
+  path?: string;
+  timeout?: number;
+}
+
+// Get response body from intercepted request
+export interface ResponseBodyCommand extends BaseCommand {
+  action: 'responsebody';
+  url: string;
+  timeout?: number;
+}
+
 // Video recording
 export interface VideoStartCommand extends BaseCommand {
   action: 'video_start';
@@ -760,7 +817,16 @@ export type Command =
   | MouseMoveCommand
   | MouseDownCommand
   | MouseUpCommand
-  | BringToFrontCommand;
+  | BringToFrontCommand
+  | WaitForFunctionCommand
+  | ScrollIntoViewCommand
+  | AddInitScriptCommand
+  | KeyDownCommand
+  | KeyUpCommand
+  | InsertTextCommand
+  | MultiSelectCommand
+  | WaitForDownloadCommand
+  | ResponseBodyCommand;
 
 // Response types
 export interface SuccessResponse<T = unknown> {

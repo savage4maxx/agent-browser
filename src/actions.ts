@@ -85,6 +85,15 @@ import type {
   MouseMoveCommand,
   MouseDownCommand,
   MouseUpCommand,
+  WaitForFunctionCommand,
+  ScrollIntoViewCommand,
+  AddInitScriptCommand,
+  KeyDownCommand,
+  KeyUpCommand,
+  InsertTextCommand,
+  MultiSelectCommand,
+  WaitForDownloadCommand,
+  ResponseBodyCommand,
   NavigateData,
   ScreenshotData,
   EvaluateData,
@@ -320,6 +329,24 @@ export async function executeCommand(
         return await handleMouseUp(command, browser);
       case 'bringtofront':
         return await handleBringToFront(command, browser);
+      case 'waitforfunction':
+        return await handleWaitForFunction(command, browser);
+      case 'scrollintoview':
+        return await handleScrollIntoView(command, browser);
+      case 'addinitscript':
+        return await handleAddInitScript(command, browser);
+      case 'keydown':
+        return await handleKeyDown(command, browser);
+      case 'keyup':
+        return await handleKeyUp(command, browser);
+      case 'inserttext':
+        return await handleInsertText(command, browser);
+      case 'multiselect':
+        return await handleMultiSelect(command, browser);
+      case 'waitfordownload':
+        return await handleWaitForDownload(command, browser);
+      case 'responsebody':
+        return await handleResponseBody(command, browser);
       default: {
         // TypeScript narrows to never here, but we handle it for safety
         const unknownCommand = command as { id: string; action: string };
@@ -1619,4 +1646,115 @@ async function handleBringToFront(
   const page = browser.getPage();
   await page.bringToFront();
   return successResponse(command.id, { focused: true });
+}
+
+async function handleWaitForFunction(
+  command: WaitForFunctionCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  await page.waitForFunction(command.expression, { timeout: command.timeout });
+  return successResponse(command.id, { waited: true });
+}
+
+async function handleScrollIntoView(
+  command: ScrollIntoViewCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  await page.locator(command.selector).scrollIntoViewIfNeeded();
+  return successResponse(command.id, { scrolled: true });
+}
+
+async function handleAddInitScript(
+  command: AddInitScriptCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const context = browser.getPage().context();
+  await context.addInitScript(command.script);
+  return successResponse(command.id, { added: true });
+}
+
+async function handleKeyDown(
+  command: KeyDownCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  await page.keyboard.down(command.key);
+  return successResponse(command.id, { down: true, key: command.key });
+}
+
+async function handleKeyUp(
+  command: KeyUpCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  await page.keyboard.up(command.key);
+  return successResponse(command.id, { up: true, key: command.key });
+}
+
+async function handleInsertText(
+  command: InsertTextCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  await page.keyboard.insertText(command.text);
+  return successResponse(command.id, { inserted: true });
+}
+
+async function handleMultiSelect(
+  command: MultiSelectCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  const selected = await page.locator(command.selector).selectOption(command.values);
+  return successResponse(command.id, { selected });
+}
+
+async function handleWaitForDownload(
+  command: WaitForDownloadCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  const download = await page.waitForEvent('download', { timeout: command.timeout });
+  
+  let filePath: string;
+  if (command.path) {
+    filePath = command.path;
+    await download.saveAs(filePath);
+  } else {
+    filePath = await download.path() || download.suggestedFilename();
+  }
+  
+  return successResponse(command.id, { 
+    path: filePath,
+    filename: download.suggestedFilename(),
+    url: download.url(),
+  });
+}
+
+async function handleResponseBody(
+  command: ResponseBodyCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  const response = await page.waitForResponse(
+    resp => resp.url().includes(command.url),
+    { timeout: command.timeout }
+  );
+  
+  const body = await response.text();
+  let parsed: unknown = body;
+  
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    // Keep as string if not JSON
+  }
+  
+  return successResponse(command.id, {
+    url: response.url(),
+    status: response.status(),
+    body: parsed,
+  });
 }

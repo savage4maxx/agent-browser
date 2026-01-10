@@ -205,6 +205,18 @@ function printResponse(response: Response, jsonMode: boolean): void {
     else reqs.forEach(r => console.log(`${c('cyan', r.method)} ${r.url}`));
   } else if (data.moved) {
     console.log(c('green', '✓'), `Moved to (${data.x}, ${data.y})`);
+  } else if (data.body !== undefined && data.status !== undefined) {
+    // Response body
+    console.log(c('green', '✓'), `${data.status} ${data.url}`);
+    console.log(typeof data.body === 'object' ? JSON.stringify(data.body, null, 2) : data.body);
+  } else if (data.filename) {
+    // Download
+    console.log(c('green', '✓'), `Downloaded: ${data.filename}`);
+    console.log(c('dim', `  Path: ${data.path}`));
+  } else if (data.inserted) {
+    console.log(c('green', '✓'), 'Text inserted');
+  } else if (data.key) {
+    console.log(c('green', '✓'), `Key ${data.down ? 'down' : 'up'}: ${data.key}`);
   } else if (data.note) {
     console.log(c('yellow', '⚠'), data.note);
   } else if (data.closed === true) {
@@ -507,6 +519,7 @@ interface Flags {
   exact: boolean;
   url?: string;
   load?: string;
+  fn?: string;
 }
 
 function parseFlags(args: string[]): { flags: Flags; cleanArgs: string[] } {
@@ -545,6 +558,8 @@ function parseFlags(args: string[]): { flags: Flags; cleanArgs: string[] } {
       flags.url = args[++i];
     } else if (arg === '--load' && args[i + 1]) {
       flags.load = args[++i];
+    } else if ((arg === '--fn' || arg === '--function') && args[i + 1]) {
+      flags.fn = args[++i];
     } else if (!arg.startsWith('-')) {
       cleanArgs.push(arg);
     }
@@ -613,6 +628,16 @@ async function main(): Promise<void> {
       cmd = { id, action: 'press', key: args[0] };
       break;
     
+    case 'keydown':
+      if (!args[0]) err('Key required');
+      cmd = { id, action: 'keydown', key: args[0] };
+      break;
+    
+    case 'keyup':
+      if (!args[0]) err('Key required');
+      cmd = { id, action: 'keyup', key: args[0] };
+      break;
+    
     case 'hover':
       if (!args[0]) err('Selector required');
       cmd = { id, action: 'hover', selector: args[0] };
@@ -657,8 +682,10 @@ async function main(): Promise<void> {
     
     case 'wait': {
       const target = args[0];
-      // Check for --url and --load flags
-      if (flags.url) {
+      // Check for flags
+      if (flags.fn) {
+        cmd = { id, action: 'waitforfunction', expression: flags.fn };
+      } else if (flags.url) {
         cmd = { id, action: 'waitforurl', url: flags.url };
       } else if (flags.load) {
         cmd = { id, action: 'waitforloadstate', state: flags.load };
@@ -670,7 +697,7 @@ async function main(): Promise<void> {
       } else if (target) {
         cmd = { id, action: 'wait', selector: target };
       } else {
-        err('Usage: veb wait <selector|ms|--text text|--url pattern|--load state>');
+        err('Usage: veb wait <selector|ms|--text|--url|--load|--fn>');
       }
       break;
     }
@@ -797,6 +824,37 @@ async function main(): Promise<void> {
     case 'highlight':
       if (!args[0]) err('Selector required');
       cmd = { id, action: 'highlight', selector: args[0] };
+      break;
+    
+    case 'scrollintoview':
+    case 'scrollinto':
+      if (!args[0]) err('Selector required');
+      cmd = { id, action: 'scrollintoview', selector: args[0] };
+      break;
+    
+    case 'initscript':
+      if (!args[0]) err('Script required');
+      cmd = { id, action: 'addinitscript', script: args.join(' ') };
+      break;
+    
+    case 'inserttext':
+    case 'insert':
+      if (!args[0]) err('Text required');
+      cmd = { id, action: 'inserttext', text: args.join(' ') };
+      break;
+    
+    case 'multiselect':
+      if (!args[0] || args.length < 2) err('Usage: veb multiselect <selector> <value1> [value2...]');
+      cmd = { id, action: 'multiselect', selector: args[0], values: args.slice(1) };
+      break;
+    
+    case 'download':
+      cmd = { id, action: 'waitfordownload', path: args[0] };
+      break;
+    
+    case 'response':
+      if (!args[0]) err('URL pattern required');
+      cmd = { id, action: 'responsebody', url: args[0] };
       break;
     
     case 'session':

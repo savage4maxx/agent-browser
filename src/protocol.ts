@@ -527,6 +527,55 @@ const bringToFrontSchema = baseCommandSchema.extend({
   action: z.literal('bringtofront'),
 });
 
+const waitForFunctionSchema = baseCommandSchema.extend({
+  action: z.literal('waitforfunction'),
+  expression: z.string().min(1),
+  timeout: z.number().positive().optional(),
+});
+
+const scrollIntoViewSchema = baseCommandSchema.extend({
+  action: z.literal('scrollintoview'),
+  selector: z.string().min(1),
+});
+
+const addInitScriptSchema = baseCommandSchema.extend({
+  action: z.literal('addinitscript'),
+  script: z.string().min(1),
+});
+
+const keyDownSchema = baseCommandSchema.extend({
+  action: z.literal('keydown'),
+  key: z.string().min(1),
+});
+
+const keyUpSchema = baseCommandSchema.extend({
+  action: z.literal('keyup'),
+  key: z.string().min(1),
+});
+
+const insertTextSchema = baseCommandSchema.extend({
+  action: z.literal('inserttext'),
+  text: z.string(),
+});
+
+const multiSelectSchema = baseCommandSchema.extend({
+  action: z.literal('multiselect'),
+  selector: z.string().min(1),
+  values: z.array(z.string()),
+});
+
+const waitForDownloadSchema = baseCommandSchema.extend({
+  action: z.literal('waitfordownload'),
+  path: z.string().optional(),
+  timeout: z.number().positive().optional(),
+});
+
+const responseBodySchema = baseCommandSchema.extend({
+  action: z.literal('responsebody'),
+  url: z.string().min(1),
+  timeout: z.number().positive().optional(),
+});
+
 const pressSchema = baseCommandSchema.extend({
   action: z.literal('press'),
   key: z.string().min(1),
@@ -722,6 +771,15 @@ const commandSchema = z.discriminatedUnion('action', [
   mouseDownSchema,
   mouseUpSchema,
   bringToFrontSchema,
+  waitForFunctionSchema,
+  scrollIntoViewSchema,
+  addInitScriptSchema,
+  keyDownSchema,
+  keyUpSchema,
+  insertTextSchema,
+  multiSelectSchema,
+  waitForDownloadSchema,
+  responseBodySchema,
 ]);
 
 // Parse result type
