@@ -165,7 +165,18 @@ export interface DialogCommand extends BaseCommand {
 export interface PdfCommand extends BaseCommand {
   action: 'pdf';
   path: string;
-  format?: 'Letter' | 'Legal' | 'Tabloid' | 'Ledger' | 'A0' | 'A1' | 'A2' | 'A3' | 'A4' | 'A5' | 'A6';
+  format?:
+    | 'Letter'
+    | 'Legal'
+    | 'Tabloid'
+    | 'Ledger'
+    | 'A0'
+    | 'A1'
+    | 'A2'
+    | 'A3'
+    | 'A4'
+    | 'A5'
+    | 'A6';
 }
 
 // Network interception

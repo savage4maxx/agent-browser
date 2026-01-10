@@ -1,4 +1,16 @@
-import { chromium, firefox, webkit, devices, type Browser, type BrowserContext, type Page, type Frame, type Dialog, type Request, type Route } from 'playwright';
+import {
+  chromium,
+  firefox,
+  webkit,
+  devices,
+  type Browser,
+  type BrowserContext,
+  type Page,
+  type Frame,
+  type Dialog,
+  type Request,
+  type Route,
+} from 'playwright';
 import type { LaunchCommand } from './types.js';
 
 interface TrackedRequest {
@@ -68,7 +80,7 @@ export class BrowserManager {
    */
   async switchToFrame(options: { selector?: string; name?: string; url?: string }): Promise<void> {
     const page = this.getPage();
-    
+
     if (options.selector) {
       const frameElement = await page.$(options.selector);
       if (!frameElement) {
@@ -106,12 +118,12 @@ export class BrowserManager {
    */
   setDialogHandler(response: 'accept' | 'dismiss', promptText?: string): void {
     const page = this.getPage();
-    
+
     // Remove existing handler if any
     if (this.dialogHandler) {
       page.removeListener('dialog', this.dialogHandler);
     }
-    
+
     this.dialogHandler = async (dialog: Dialog) => {
       if (response === 'accept') {
         await dialog.accept(promptText);
@@ -119,7 +131,7 @@ export class BrowserManager {
         await dialog.dismiss();
       }
     };
-    
+
     page.on('dialog', this.dialogHandler);
   }
 
@@ -155,7 +167,7 @@ export class BrowserManager {
    */
   getRequests(filter?: string): TrackedRequest[] {
     if (filter) {
-      return this.trackedRequests.filter(r => r.url.includes(filter));
+      return this.trackedRequests.filter((r) => r.url.includes(filter));
     }
     return this.trackedRequests;
   }
@@ -173,12 +185,17 @@ export class BrowserManager {
   async addRoute(
     url: string,
     options: {
-      response?: { status?: number; body?: string; contentType?: string; headers?: Record<string, string> };
+      response?: {
+        status?: number;
+        body?: string;
+        contentType?: string;
+        headers?: Record<string, string>;
+      };
       abort?: boolean;
     }
   ): Promise<void> {
     const page = this.getPage();
-    
+
     const handler = async (route: Route) => {
       if (options.abort) {
         await route.abort();
@@ -193,7 +210,7 @@ export class BrowserManager {
         await route.continue();
       }
     };
-    
+
     this.routes.set(url, handler);
     await page.route(url, handler);
   }
@@ -203,7 +220,7 @@ export class BrowserManager {
    */
   async removeRoute(url?: string): Promise<void> {
     const page = this.getPage();
-    
+
     if (url) {
       const handler = this.routes.get(url);
       if (handler) {
@@ -254,7 +271,7 @@ export class BrowserManager {
   /**
    * Get device descriptor
    */
-  getDevice(deviceName: string): typeof devices[keyof typeof devices] | undefined {
+  getDevice(deviceName: string): (typeof devices)[keyof typeof devices] | undefined {
     return devices[deviceName as keyof typeof devices];
   }
 
@@ -420,11 +437,8 @@ export class BrowserManager {
 
     // Select browser type
     const browserType = options.browser ?? 'chromium';
-    const launcher = browserType === 'firefox' 
-      ? firefox 
-      : browserType === 'webkit' 
-        ? webkit 
-        : chromium;
+    const launcher =
+      browserType === 'firefox' ? firefox : browserType === 'webkit' ? webkit : chromium;
 
     // Launch browser
     this.browser = await launcher.launch({
@@ -435,10 +449,10 @@ export class BrowserManager {
     const context = await this.browser.newContext({
       viewport: options.viewport ?? { width: 1280, height: 720 },
     });
-    
+
     // Set default timeout to 10 seconds (Playwright default is 30s)
     context.setDefaultTimeout(10000);
-    
+
     this.contexts.push(context);
 
     // Create initial page
@@ -466,7 +480,10 @@ export class BrowserManager {
   /**
    * Create a new window (new context)
    */
-  async newWindow(viewport?: { width: number; height: number }): Promise<{ index: number; total: number }> {
+  async newWindow(viewport?: {
+    width: number;
+    height: number;
+  }): Promise<{ index: number; total: number }> {
     if (!this.browser) {
       throw new Error('Browser not launched');
     }

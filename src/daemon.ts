@@ -45,7 +45,7 @@ export function getPidFile(session?: string): string {
 export function isDaemonRunning(session?: string): boolean {
   const pidFile = getPidFile(session);
   if (!fs.existsSync(pidFile)) return false;
-  
+
   try {
     const pid = parseInt(fs.readFileSync(pidFile, 'utf8').trim(), 10);
     // Check if process exists
@@ -78,43 +78,47 @@ export function cleanupSocket(session?: string): void {
 export async function startDaemon(): Promise<void> {
   // Clean up any stale socket
   cleanupSocket();
-  
+
   const browser = new BrowserManager();
   let shuttingDown = false;
-  
+
   const server = net.createServer((socket) => {
     let buffer = '';
-    
+
     socket.on('data', async (data) => {
       buffer += data.toString();
-      
+
       // Process complete lines
       while (buffer.includes('\n')) {
         const newlineIdx = buffer.indexOf('\n');
         const line = buffer.substring(0, newlineIdx);
         buffer = buffer.substring(newlineIdx + 1);
-        
+
         if (!line.trim()) continue;
-        
+
         try {
           const parseResult = parseCommand(line);
-          
+
           if (!parseResult.success) {
             const resp = errorResponse(parseResult.id ?? 'unknown', parseResult.error);
             socket.write(serializeResponse(resp) + '\n');
             continue;
           }
-          
+
           // Auto-launch browser if not already launched and this isn't a launch command
-          if (!browser.isLaunched() && parseResult.command.action !== 'launch' && parseResult.command.action !== 'close') {
+          if (
+            !browser.isLaunched() &&
+            parseResult.command.action !== 'launch' &&
+            parseResult.command.action !== 'close'
+          ) {
             await browser.launch({ id: 'auto', action: 'launch', headless: true });
           }
-          
+
           // Handle close command specially
           if (parseResult.command.action === 'close') {
             const response = await executeCommand(parseResult.command, browser);
             socket.write(serializeResponse(response) + '\n');
-            
+
             if (!shuttingDown) {
               shuttingDown = true;
               setTimeout(() => {
@@ -125,7 +129,7 @@ export async function startDaemon(): Promise<void> {
             }
             return;
           }
-          
+
           const response = await executeCommand(parseResult.command, browser);
           socket.write(serializeResponse(response) + '\n');
         } catch (err) {
@@ -134,28 +138,28 @@ export async function startDaemon(): Promise<void> {
         }
       }
     });
-    
+
     socket.on('error', () => {
       // Client disconnected, ignore
     });
   });
-  
+
   const socketPath = getSocketPath();
   const pidFile = getPidFile();
-  
+
   // Write PID file before listening
   fs.writeFileSync(pidFile, process.pid.toString());
-  
+
   server.listen(socketPath, () => {
     // Daemon is ready
   });
-  
+
   server.on('error', (err) => {
     console.error('Server error:', err);
     cleanupSocket();
     process.exit(1);
   });
-  
+
   // Handle shutdown signals
   const shutdown = async () => {
     if (shuttingDown) return;
@@ -165,10 +169,10 @@ export async function startDaemon(): Promise<void> {
     cleanupSocket();
     process.exit(0);
   };
-  
+
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
-  
+
   // Keep process alive
   process.stdin.resume();
 }

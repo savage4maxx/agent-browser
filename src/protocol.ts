@@ -11,10 +11,12 @@ const baseCommandSchema = z.object({
 const launchSchema = baseCommandSchema.extend({
   action: z.literal('launch'),
   headless: z.boolean().optional(),
-  viewport: z.object({
-    width: z.number().positive(),
-    height: z.number().positive(),
-  }).optional(),
+  viewport: z
+    .object({
+      width: z.number().positive(),
+      height: z.number().positive(),
+    })
+    .optional(),
   browser: z.enum(['chromium', 'firefox', 'webkit']).optional(),
 });
 
@@ -125,17 +127,19 @@ const cookiesGetSchema = baseCommandSchema.extend({
 
 const cookiesSetSchema = baseCommandSchema.extend({
   action: z.literal('cookies_set'),
-  cookies: z.array(z.object({
-    name: z.string(),
-    value: z.string(),
-    url: z.string().optional(),
-    domain: z.string().optional(),
-    path: z.string().optional(),
-    expires: z.number().optional(),
-    httpOnly: z.boolean().optional(),
-    secure: z.boolean().optional(),
-    sameSite: z.enum(['Strict', 'Lax', 'None']).optional(),
-  })),
+  cookies: z.array(
+    z.object({
+      name: z.string(),
+      value: z.string(),
+      url: z.string().optional(),
+      domain: z.string().optional(),
+      path: z.string().optional(),
+      expires: z.number().optional(),
+      httpOnly: z.boolean().optional(),
+      secure: z.boolean().optional(),
+      sameSite: z.enum(['Strict', 'Lax', 'None']).optional(),
+    })
+  ),
 });
 
 const cookiesClearSchema = baseCommandSchema.extend({
@@ -169,18 +173,22 @@ const dialogSchema = baseCommandSchema.extend({
 const pdfSchema = baseCommandSchema.extend({
   action: z.literal('pdf'),
   path: z.string().min(1),
-  format: z.enum(['Letter', 'Legal', 'Tabloid', 'Ledger', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6']).optional(),
+  format: z
+    .enum(['Letter', 'Legal', 'Tabloid', 'Ledger', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6'])
+    .optional(),
 });
 
 const routeSchema = baseCommandSchema.extend({
   action: z.literal('route'),
   url: z.string().min(1),
-  response: z.object({
-    status: z.number().optional(),
-    body: z.string().optional(),
-    contentType: z.string().optional(),
-    headers: z.record(z.string()).optional(),
-  }).optional(),
+  response: z
+    .object({
+      status: z.number().optional(),
+      body: z.string().optional(),
+      contentType: z.string().optional(),
+      headers: z.record(z.string()).optional(),
+    })
+    .optional(),
   abort: z.boolean().optional(),
 });
 
@@ -658,10 +666,12 @@ const tabCloseSchema = baseCommandSchema.extend({
 
 const windowNewSchema = baseCommandSchema.extend({
   action: z.literal('window_new'),
-  viewport: z.object({
-    width: z.number().positive(),
-    height: z.number().positive(),
-  }).optional(),
+  viewport: z
+    .object({
+      width: z.number().positive(),
+      height: z.number().positive(),
+    })
+    .optional(),
 });
 
 // Union schema for all commands
@@ -783,7 +793,7 @@ const commandSchema = z.discriminatedUnion('action', [
 ]);
 
 // Parse result type
-export type ParseResult = 
+export type ParseResult =
   | { success: true; command: Command }
   | { success: false; error: string; id?: string };
 
@@ -800,17 +810,16 @@ export function parseCommand(input: string): ParseResult {
   }
 
   // Extract id for error responses if possible
-  const id = typeof json === 'object' && json !== null && 'id' in json 
-    ? String((json as { id: unknown }).id) 
-    : undefined;
+  const id =
+    typeof json === 'object' && json !== null && 'id' in json
+      ? String((json as { id: unknown }).id)
+      : undefined;
 
   // Validate against schema
   const result = commandSchema.safeParse(json);
-  
+
   if (!result.success) {
-    const errors = result.error.errors
-      .map(e => `${e.path.join('.')}: ${e.message}`)
-      .join(', ');
+    const errors = result.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
     return { success: false, error: `Validation error: ${errors}`, id };
   }
 

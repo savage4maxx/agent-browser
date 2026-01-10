@@ -113,10 +113,7 @@ interface SnapshotData {
 /**
  * Execute a command and return a response
  */
-export async function executeCommand(
-  command: Command,
-  browser: BrowserManager
-): Promise<Response> {
+export async function executeCommand(command: Command, browser: BrowserManager): Promise<Response> {
   try {
     switch (command.action) {
       case 'launch':
@@ -375,56 +372,47 @@ async function handleNavigate(
   await page.goto(command.url, {
     waitUntil: command.waitUntil ?? 'load',
   });
-  
+
   return successResponse(command.id, {
     url: page.url(),
     title: await page.title(),
   });
 }
 
-async function handleClick(
-  command: ClickCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleClick(command: ClickCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
   await page.click(command.selector, {
     button: command.button,
     clickCount: command.clickCount,
     delay: command.delay,
   });
-  
+
   return successResponse(command.id, { clicked: true });
 }
 
-async function handleType(
-  command: TypeCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleType(command: TypeCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
-  
+
   if (command.clear) {
     await page.fill(command.selector, '');
   }
-  
+
   await page.type(command.selector, command.text, {
     delay: command.delay,
   });
-  
+
   return successResponse(command.id, { typed: true });
 }
 
-async function handlePress(
-  command: PressCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handlePress(command: PressCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
-  
+
   if (command.selector) {
     await page.press(command.selector, command.key);
   } else {
     await page.keyboard.press(command.key);
   }
-  
+
   return successResponse(command.id, { pressed: true });
 }
 
@@ -433,21 +421,21 @@ async function handleScreenshot(
   browser: BrowserManager
 ): Promise<Response<ScreenshotData>> {
   const page = browser.getPage();
-  
+
   const options: Parameters<Page['screenshot']>[0] = {
     fullPage: command.fullPage,
     type: command.format ?? 'png',
   };
-  
+
   if (command.format === 'jpeg' && command.quality !== undefined) {
     options.quality = command.quality;
   }
-  
+
   let target: Page | ReturnType<Page['locator']> = page;
   if (command.selector) {
     target = page.locator(command.selector);
   }
-  
+
   if (command.path) {
     await target.screenshot({ ...options, path: command.path });
     return successResponse(command.id, { path: command.path });
@@ -464,7 +452,7 @@ async function handleSnapshot(
   const page = browser.getPage();
   // Use ariaSnapshot which returns a string representation of the accessibility tree
   const snapshot = await page.locator(':root').ariaSnapshot();
-  
+
   return successResponse(command.id, {
     snapshot: snapshot ?? 'Empty page',
   });
@@ -475,19 +463,16 @@ async function handleEvaluate(
   browser: BrowserManager
 ): Promise<Response<EvaluateData>> {
   const page = browser.getPage();
-  
+
   // Evaluate the script directly as a string expression
   const result = await page.evaluate(command.script);
-  
+
   return successResponse(command.id, { result });
 }
 
-async function handleWait(
-  command: WaitCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleWait(command: WaitCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
-  
+
   if (command.selector) {
     await page.waitForSelector(command.selector, {
       state: command.state ?? 'visible',
@@ -499,30 +484,30 @@ async function handleWait(
     // Default: wait for load state
     await page.waitForLoadState('load');
   }
-  
+
   return successResponse(command.id, { waited: true });
 }
 
-async function handleScroll(
-  command: ScrollCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleScroll(command: ScrollCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
-  
+
   if (command.selector) {
     const element = page.locator(command.selector);
     await element.scrollIntoViewIfNeeded();
-    
+
     if (command.x !== undefined || command.y !== undefined) {
-      await element.evaluate((el, { x, y }) => {
-        el.scrollBy(x ?? 0, y ?? 0);
-      }, { x: command.x, y: command.y });
+      await element.evaluate(
+        (el, { x, y }) => {
+          el.scrollBy(x ?? 0, y ?? 0);
+        },
+        { x: command.x, y: command.y }
+      );
     }
   } else {
     // Scroll the page
     let deltaX = command.x ?? 0;
     let deltaY = command.y ?? 0;
-    
+
     if (command.direction) {
       const amount = command.amount ?? 100;
       switch (command.direction) {
@@ -540,32 +525,26 @@ async function handleScroll(
           break;
       }
     }
-    
+
     await page.evaluate(`window.scrollBy(${deltaX}, ${deltaY})`);
   }
-  
+
   return successResponse(command.id, { scrolled: true });
 }
 
-async function handleSelect(
-  command: SelectCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleSelect(command: SelectCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
   const values = Array.isArray(command.values) ? command.values : [command.values];
-  
+
   await page.selectOption(command.selector, values);
-  
+
   return successResponse(command.id, { selected: values });
 }
 
-async function handleHover(
-  command: HoverCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleHover(command: HoverCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
   await page.hover(command.selector);
-  
+
   return successResponse(command.id, { hovered: true });
 }
 
@@ -574,14 +553,14 @@ async function handleContent(
   browser: BrowserManager
 ): Promise<Response<ContentData>> {
   const page = browser.getPage();
-  
+
   let html: string;
   if (command.selector) {
     html = await page.locator(command.selector).innerHTML();
   } else {
     html = await page.content();
   }
-  
+
   return successResponse(command.id, { html });
 }
 
@@ -642,37 +621,25 @@ async function handleWindowNew(
 
 // New handlers for enhanced Playwright parity
 
-async function handleFill(
-  command: FillCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleFill(command: FillCommand, browser: BrowserManager): Promise<Response> {
   const frame = browser.getFrame();
   await frame.fill(command.selector, command.value);
   return successResponse(command.id, { filled: true });
 }
 
-async function handleCheck(
-  command: CheckCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleCheck(command: CheckCommand, browser: BrowserManager): Promise<Response> {
   const frame = browser.getFrame();
   await frame.check(command.selector);
   return successResponse(command.id, { checked: true });
 }
 
-async function handleUncheck(
-  command: UncheckCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleUncheck(command: UncheckCommand, browser: BrowserManager): Promise<Response> {
   const frame = browser.getFrame();
   await frame.uncheck(command.selector);
   return successResponse(command.id, { unchecked: true });
 }
 
-async function handleUpload(
-  command: UploadCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleUpload(command: UploadCommand, browser: BrowserManager): Promise<Response> {
   const frame = browser.getFrame();
   const files = Array.isArray(command.files) ? command.files : [command.files];
   await frame.setInputFiles(command.selector, files);
@@ -688,28 +655,19 @@ async function handleDoubleClick(
   return successResponse(command.id, { clicked: true });
 }
 
-async function handleFocus(
-  command: FocusCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleFocus(command: FocusCommand, browser: BrowserManager): Promise<Response> {
   const frame = browser.getFrame();
   await frame.focus(command.selector);
   return successResponse(command.id, { focused: true });
 }
 
-async function handleDrag(
-  command: DragCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleDrag(command: DragCommand, browser: BrowserManager): Promise<Response> {
   const frame = browser.getFrame();
   await frame.dragAndDrop(command.source, command.target);
   return successResponse(command.id, { dragged: true });
 }
 
-async function handleFrame(
-  command: FrameCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleFrame(command: FrameCommand, browser: BrowserManager): Promise<Response> {
   await browser.switchToFrame({
     selector: command.selector,
     name: command.name,
@@ -732,7 +690,7 @@ async function handleGetByRole(
 ): Promise<Response> {
   const page = browser.getPage();
   const locator = page.getByRole(command.role as any, { name: command.name });
-  
+
   switch (command.subaction) {
     case 'click':
       await locator.click();
@@ -755,7 +713,7 @@ async function handleGetByText(
 ): Promise<Response> {
   const page = browser.getPage();
   const locator = page.getByText(command.text, { exact: command.exact });
-  
+
   switch (command.subaction) {
     case 'click':
       await locator.click();
@@ -772,7 +730,7 @@ async function handleGetByLabel(
 ): Promise<Response> {
   const page = browser.getPage();
   const locator = page.getByLabel(command.label);
-  
+
   switch (command.subaction) {
     case 'click':
       await locator.click();
@@ -792,7 +750,7 @@ async function handleGetByPlaceholder(
 ): Promise<Response> {
   const page = browser.getPage();
   const locator = page.getByPlaceholder(command.placeholder);
-  
+
   switch (command.subaction) {
     case 'click':
       await locator.click();
@@ -839,11 +797,9 @@ async function handleStorageGet(
 ): Promise<Response> {
   const page = browser.getPage();
   const storageType = command.type === 'local' ? 'localStorage' : 'sessionStorage';
-  
+
   if (command.key) {
-    const value = await page.evaluate(
-      `${storageType}.getItem(${JSON.stringify(command.key)})`
-    );
+    const value = await page.evaluate(`${storageType}.getItem(${JSON.stringify(command.key)})`);
     return successResponse(command.id, { key: command.key, value });
   } else {
     const data = await page.evaluate(`
@@ -867,7 +823,7 @@ async function handleStorageSet(
 ): Promise<Response> {
   const page = browser.getPage();
   const storageType = command.type === 'local' ? 'localStorage' : 'sessionStorage';
-  
+
   await page.evaluate(
     `${storageType}.setItem(${JSON.stringify(command.key)}, ${JSON.stringify(command.value)})`
   );
@@ -880,23 +836,17 @@ async function handleStorageClear(
 ): Promise<Response> {
   const page = browser.getPage();
   const storageType = command.type === 'local' ? 'localStorage' : 'sessionStorage';
-  
+
   await page.evaluate(`${storageType}.clear()`);
   return successResponse(command.id, { cleared: true });
 }
 
-async function handleDialog(
-  command: DialogCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleDialog(command: DialogCommand, browser: BrowserManager): Promise<Response> {
   browser.setDialogHandler(command.response, command.promptText);
   return successResponse(command.id, { handler: 'set', response: command.response });
 }
 
-async function handlePdf(
-  command: PdfCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handlePdf(command: PdfCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
   await page.pdf({
     path: command.path,
@@ -907,10 +857,7 @@ async function handlePdf(
 
 // Network & Request handlers
 
-async function handleRoute(
-  command: RouteCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleRoute(command: RouteCommand, browser: BrowserManager): Promise<Response> {
   await browser.addRoute(command.url, {
     response: command.response,
     abort: command.abort,
@@ -934,10 +881,10 @@ async function handleRequests(
     browser.clearRequests();
     return successResponse(command.id, { cleared: true });
   }
-  
+
   // Start tracking if not already
   browser.startRequestTracking();
-  
+
   const requests = browser.getRequests(command.filter);
   return successResponse(command.id, { requests });
 }
@@ -947,14 +894,14 @@ async function handleDownload(
   browser: BrowserManager
 ): Promise<Response> {
   const page = browser.getPage();
-  
+
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.click(command.selector),
   ]);
-  
+
   await download.saveAs(command.path);
-  return successResponse(command.id, { 
+  return successResponse(command.id, {
     path: command.path,
     suggestedFilename: download.suggestedFilename(),
   });
@@ -965,7 +912,7 @@ async function handleGeolocation(
   browser: BrowserManager
 ): Promise<Response> {
   await browser.setGeolocation(command.latitude, command.longitude, command.accuracy);
-  return successResponse(command.id, { 
+  return successResponse(command.id, {
     latitude: command.latitude,
     longitude: command.longitude,
   });
@@ -976,7 +923,7 @@ async function handlePermissions(
   browser: BrowserManager
 ): Promise<Response> {
   await browser.setPermissions(command.permissions, command.grant);
-  return successResponse(command.id, { 
+  return successResponse(command.id, {
     permissions: command.permissions,
     granted: command.grant,
   });
@@ -987,7 +934,7 @@ async function handleViewport(
   browser: BrowserManager
 ): Promise<Response> {
   await browser.setViewport(command.width, command.height);
-  return successResponse(command.id, { 
+  return successResponse(command.id, {
     width: command.width,
     height: command.height,
   });
@@ -1000,25 +947,22 @@ async function handleUserAgent(
   const page = browser.getPage();
   const context = page.context();
   // Note: Can't change user agent after context is created, but we can for new pages
-  return successResponse(command.id, { 
+  return successResponse(command.id, {
     note: 'User agent can only be set at launch time. Use device command instead.',
   });
 }
 
-async function handleDevice(
-  command: DeviceCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleDevice(command: DeviceCommand, browser: BrowserManager): Promise<Response> {
   const device = browser.getDevice(command.device);
   if (!device) {
     const available = browser.listDevices().slice(0, 10).join(', ');
     throw new Error(`Unknown device: ${command.device}. Available: ${available}...`);
   }
-  
+
   // Apply device viewport
   await browser.setViewport(device.viewport.width, device.viewport.height);
-  
-  return successResponse(command.id, { 
+
+  return successResponse(command.id, {
     device: command.device,
     viewport: device.viewport,
     userAgent: device.userAgent,
@@ -1078,10 +1022,7 @@ async function handleGetAttribute(
   return successResponse(command.id, { attribute: command.attribute, value });
 }
 
-async function handleGetText(
-  command: GetTextCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleGetText(command: GetTextCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
   const text = await page.textContent(command.selector);
   return successResponse(command.id, { text });
@@ -1114,10 +1055,7 @@ async function handleIsChecked(
   return successResponse(command.id, { checked });
 }
 
-async function handleCount(
-  command: CountCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleCount(command: CountCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
   const count = await page.locator(command.selector).count();
   return successResponse(command.id, { count });
@@ -1140,7 +1078,7 @@ async function handleVideoStart(
 ): Promise<Response> {
   // Video recording requires context-level setup at launch
   // For now, return a note about this limitation
-  return successResponse(command.id, { 
+  return successResponse(command.id, {
     note: 'Video recording must be enabled at browser launch. Use --video flag when starting.',
     path: command.path,
   });
@@ -1187,14 +1125,11 @@ async function handleHarStart(
   return successResponse(command.id, { started: true });
 }
 
-async function handleHarStop(
-  command: HarStopCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleHarStop(command: HarStopCommand, browser: BrowserManager): Promise<Response> {
   // HAR recording is handled at context level
   // For now, we save tracked requests as a simplified HAR-like format
   const requests = browser.getRequests();
-  return successResponse(command.id, { 
+  return successResponse(command.id, {
     path: command.path,
     requestCount: requests.length,
   });
@@ -1213,35 +1148,29 @@ async function handleStateLoad(
   browser: BrowserManager
 ): Promise<Response> {
   // Storage state is loaded at context creation
-  return successResponse(command.id, { 
+  return successResponse(command.id, {
     note: 'Storage state must be loaded at browser launch. Use --state flag.',
     path: command.path,
   });
 }
 
-async function handleConsole(
-  command: ConsoleCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleConsole(command: ConsoleCommand, browser: BrowserManager): Promise<Response> {
   if (command.clear) {
     browser.clearConsoleMessages();
     return successResponse(command.id, { cleared: true });
   }
-  
+
   browser.startConsoleTracking();
   const messages = browser.getConsoleMessages();
   return successResponse(command.id, { messages });
 }
 
-async function handleErrors(
-  command: ErrorsCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleErrors(command: ErrorsCommand, browser: BrowserManager): Promise<Response> {
   if (command.clear) {
     browser.clearPageErrors();
     return successResponse(command.id, { cleared: true });
   }
-  
+
   browser.startErrorTracking();
   const errors = browser.getPageErrors();
   return successResponse(command.id, { errors });
@@ -1256,25 +1185,19 @@ async function handleKeyboard(
   return successResponse(command.id, { pressed: command.keys });
 }
 
-async function handleWheel(
-  command: WheelCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleWheel(command: WheelCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
-  
+
   if (command.selector) {
     const element = page.locator(command.selector);
     await element.hover();
   }
-  
+
   await page.mouse.wheel(command.deltaX ?? 0, command.deltaY ?? 0);
   return successResponse(command.id, { scrolled: true });
 }
 
-async function handleTap(
-  command: TapCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleTap(command: TapCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
   await page.tap(command.selector);
   return successResponse(command.id, { tapped: true });
@@ -1285,7 +1208,7 @@ async function handleClipboard(
   browser: BrowserManager
 ): Promise<Response> {
   const page = browser.getPage();
-  
+
   switch (command.operation) {
     case 'copy':
       await page.keyboard.press('Control+c');
@@ -1310,10 +1233,7 @@ async function handleHighlight(
   return successResponse(command.id, { highlighted: true });
 }
 
-async function handleClear(
-  command: ClearCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleClear(command: ClearCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
   await page.locator(command.selector).clear();
   return successResponse(command.id, { cleared: true });
@@ -1400,13 +1320,13 @@ async function handleAddScript(
   browser: BrowserManager
 ): Promise<Response> {
   const page = browser.getPage();
-  
+
   if (command.content) {
     await page.addScriptTag({ content: command.content });
   } else if (command.url) {
     await page.addScriptTag({ url: command.url });
   }
-  
+
   return successResponse(command.id, { added: true });
 }
 
@@ -1415,13 +1335,13 @@ async function handleAddStyle(
   browser: BrowserManager
 ): Promise<Response> {
   const page = browser.getPage();
-  
+
   if (command.content) {
     await page.addStyleTag({ content: command.content });
   } else if (command.url) {
     await page.addStyleTag({ url: command.url });
   }
-  
+
   return successResponse(command.id, { added: true });
 }
 
@@ -1439,18 +1359,12 @@ async function handleEmulateMedia(
   return successResponse(command.id, { emulated: true });
 }
 
-async function handleOffline(
-  command: OfflineCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleOffline(command: OfflineCommand, browser: BrowserManager): Promise<Response> {
   await browser.setOffline(command.offline);
   return successResponse(command.id, { offline: command.offline });
 }
 
-async function handleHeaders(
-  command: HeadersCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleHeaders(command: HeadersCommand, browser: BrowserManager): Promise<Response> {
   await browser.setExtraHeaders(command.headers);
   return successResponse(command.id, { set: true });
 }
@@ -1470,7 +1384,7 @@ async function handleGetByAltText(
 ): Promise<Response> {
   const page = browser.getPage();
   const locator = page.getByAltText(command.text, { exact: command.exact });
-  
+
   switch (command.subaction) {
     case 'click':
       await locator.click();
@@ -1487,7 +1401,7 @@ async function handleGetByTitle(
 ): Promise<Response> {
   const page = browser.getPage();
   const locator = page.getByTitle(command.text, { exact: command.exact });
-  
+
   switch (command.subaction) {
     case 'click':
       await locator.click();
@@ -1504,7 +1418,7 @@ async function handleGetByTestId(
 ): Promise<Response> {
   const page = browser.getPage();
   const locator = page.getByTestId(command.testId);
-  
+
   switch (command.subaction) {
     case 'click':
       await locator.click();
@@ -1521,14 +1435,11 @@ async function handleGetByTestId(
   }
 }
 
-async function handleNth(
-  command: NthCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleNth(command: NthCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
   const base = page.locator(command.selector);
   const locator = command.index === -1 ? base.last() : base.nth(command.index);
-  
+
   switch (command.subaction) {
     case 'click':
       await locator.click();
@@ -1583,18 +1494,15 @@ async function handleTimezone(
   // This is a limitation - it sets for the current context
   const page = browser.getPage();
   await page.context().setGeolocation({ latitude: 0, longitude: 0 }); // Trigger context awareness
-  return successResponse(command.id, { 
+  return successResponse(command.id, {
     note: 'Timezone must be set at browser launch. Use --timezone flag.',
     timezone: command.timezone,
   });
 }
 
-async function handleLocale(
-  command: LocaleCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleLocale(command: LocaleCommand, browser: BrowserManager): Promise<Response> {
   // Locale must be set at context creation
-  return successResponse(command.id, { 
+  return successResponse(command.id, {
     note: 'Locale must be set at browser launch. Use --locale flag.',
     locale: command.locale,
   });
@@ -1630,10 +1538,7 @@ async function handleMouseDown(
   return successResponse(command.id, { down: true });
 }
 
-async function handleMouseUp(
-  command: MouseUpCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleMouseUp(command: MouseUpCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
   await page.mouse.up({ button: command.button ?? 'left' });
   return successResponse(command.id, { up: true });
@@ -1675,19 +1580,13 @@ async function handleAddInitScript(
   return successResponse(command.id, { added: true });
 }
 
-async function handleKeyDown(
-  command: KeyDownCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleKeyDown(command: KeyDownCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
   await page.keyboard.down(command.key);
   return successResponse(command.id, { down: true, key: command.key });
 }
 
-async function handleKeyUp(
-  command: KeyUpCommand,
-  browser: BrowserManager
-): Promise<Response> {
+async function handleKeyUp(command: KeyUpCommand, browser: BrowserManager): Promise<Response> {
   const page = browser.getPage();
   await page.keyboard.up(command.key);
   return successResponse(command.id, { up: true, key: command.key });
@@ -1717,16 +1616,16 @@ async function handleWaitForDownload(
 ): Promise<Response> {
   const page = browser.getPage();
   const download = await page.waitForEvent('download', { timeout: command.timeout });
-  
+
   let filePath: string;
   if (command.path) {
     filePath = command.path;
     await download.saveAs(filePath);
   } else {
-    filePath = await download.path() || download.suggestedFilename();
+    filePath = (await download.path()) || download.suggestedFilename();
   }
-  
-  return successResponse(command.id, { 
+
+  return successResponse(command.id, {
     path: filePath,
     filename: download.suggestedFilename(),
     url: download.url(),
@@ -1738,20 +1637,19 @@ async function handleResponseBody(
   browser: BrowserManager
 ): Promise<Response> {
   const page = browser.getPage();
-  const response = await page.waitForResponse(
-    resp => resp.url().includes(command.url),
-    { timeout: command.timeout }
-  );
-  
+  const response = await page.waitForResponse((resp) => resp.url().includes(command.url), {
+    timeout: command.timeout,
+  });
+
   const body = await response.text();
   let parsed: unknown = body;
-  
+
   try {
     parsed = JSON.parse(body);
   } catch {
     // Keep as string if not JSON
   }
-  
+
   return successResponse(command.id, {
     url: response.url(),
     status: response.status(),
